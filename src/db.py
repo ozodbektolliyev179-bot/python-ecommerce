@@ -1,4 +1,5 @@
 import json
+from uuid import uuid4
 
 
 class DB:
@@ -28,3 +29,56 @@ class DB:
 
         with open(self.file_name, 'w') as jsonfile:
             jsonfile.write(json.dumps(data, indent=4))
+
+    def get_product_list(self) -> list[dict]:
+        with open(self.file_name) as jsonfile:
+            data = json.loads(jsonfile.read())
+
+            return data['products']
+        
+    def get_cart_by_user(self, id: str):
+        with open(self.file_name) as jsonfile:
+            data = json.loads(jsonfile.read())
+
+            for cart in data['carts']:
+                if cart['user_id'] == id:
+                    return cart
+            new_cart = {
+                'user_id': id,
+                'cart_id': str(uuid4())
+            }
+            data['carts'].append(new_cart)
+        
+        with open(self.file_name, 'w') as jsonfile:
+            jsonfile.write(json.dumps(data, indent=4))
+
+        return new_cart
+
+    def add_cart_item(self, cart: dict, product: dict):
+        with open(self.file_name) as jsonfile:
+            data = json.loads(jsonfile.read())
+
+            for cart_item in data['cart_items']:
+                if cart_item['cart_id'] == cart['cart_id'] and cart_item['product_id'] == product['id']:
+                    cart_item['quantity'] += 1
+                    break
+            else:
+                data['cart_items'].append({
+                    'cart_id': cart['cart_id'],
+                    'product_id': product['id'],
+                    'quantity': 1
+                })
+
+        with open(self.file_name, 'w') as jsonfile:
+            jsonfile.write(json.dumps(data, indent=4))
+
+    def get_cart_items_by_cart(self, cart: dict):
+        with open(self.file_name) as jsonfile:
+            data = json.loads(jsonfile.read())
+
+            result = []
+            for cart_item in data['cart_items']:
+                if cart_item['cart_id'] == cart['cart_id']:
+                    result.append(cart_item)
+            return result
+        

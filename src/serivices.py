@@ -1,12 +1,15 @@
+from hashlib import sha256
+
 from .models import User
 from .db import DB
 
 db = DB()
 
+
 class UserService:
     
     def add_user(self, username: str, password: str, first_name: str, last_name: str) -> User:
-        user = User(
+        user = User.create_user(
             username=username,
             password=password,
             first_name=first_name,
@@ -32,10 +35,68 @@ class UserService:
     def get_user_by_id(self, id: str) -> User | None:
         pass
 
+    def authenticate(self, username: str, password: str) -> User | None:
+        user_data = db.get_user_by_username(username)
+
+        if user_data is None:
+            return None
+        else:
+            if user_data['password'] != str(sha256(password.encode()).hexdigest()):
+                return None
+            else:
+                return User.from_dict(user_data)
+
+
+
+class ProductService:
+
+    def get_products(self) -> list[dict]:
+        # convert dict to Product obj
+        return db.get_product_list()
+    
+    def get_product_by_id(self, product_id: int) -> dict | None:
+        for product in self.get_products():
+            if product['id'] == product_id:
+                return product
+            
+    def get_product_by_name(self, name: str) -> list[dict]:
+        result = []
+        for product in self.get_products():
+            if name.lower() in product['name'].lower():
+                result.append(product)
+
+        return result
+
 
 class CartService:
-    pass
 
+    def __init__(self):
+        self.product_service = ProductService()
+
+    def get_user_cart(self, user: User):
+        return db.get_cart_by_user(user.id)
+    
+    def add_item(self, product: dict, user: User):
+        cart = self.get_user_cart(user)
+
+        db.add_cart_item(cart, product)
+
+    def get_user_cart_items(self, user: User):
+        cart = self.get_user_cart(user)
+
+        cart_tems = db.get_cart_items_by_cart(cart)
+        
+        result = []
+        for cart_item in cart_tems:
+            product = self.product_service.get_product_by_id(cart_item['product_id'])
+
+            result.append({
+                'product': product,
+                'cart_id': cart_item['cart_id'],
+                'quantity': cart_item['quantity']
+            })
+
+        return result
 
 class OrderService:
     pass

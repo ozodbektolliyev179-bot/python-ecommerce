@@ -1,8 +1,3 @@
-class CLI:
-    
-    def run(self) -> None:
-        print('hello world')
-        
 import sys
 from getpass import getpass
 
@@ -13,9 +8,11 @@ from .utils import (
     validate_password, 
     validate_name,
 )
-
-
-from .serivices import UserService
+from .serivices import (
+    UserService, 
+    ProductService, 
+    CartService,
+)
 
 
 class CLI:
@@ -23,22 +20,42 @@ class CLI:
     def __init__(self):
         self.current_user = None
         self.user_service = UserService()
+        self.product_service = ProductService()
+        self.cart_service = CartService()
     
     def run(self) -> None:
         while True:
-            self.print_main_menu()
+            if not self.current_user:
+                self.print_main_menu()
 
-            choice = input(colored('> ', 'yellow'))
-            if choice == '1':
-                self.show_products()
-            elif choice == '2':
-                self.login()
-            elif choice == '3':
-                self.register()
-            elif choice == '0':
-                self.quit()
+                choice = input(colored('> ', 'yellow'))
+                if choice == '1':
+                    self.show_products()
+                elif choice == '2':
+                    self.login()
+                elif choice == '3':
+                    self.register()
+                elif choice == '0':
+                    self.quit()
+                else:
+                    cprint('Bunday menu mavjud emas!', 'red')
             else:
-                cprint('Bunday menu mavjud emas!', 'red')
+                self.print_user_manu()
+
+                choice = input(colored('> ', 'yellow'))
+                if choice == '1':
+                    self.show_products()
+                elif choice == '2':
+                    self.logout()
+                elif choice == '3':
+                    self.show_cart()
+                elif choice == '0':
+                    self.quit()
+                else:
+                    cprint('Bunday menu mavjud emas!', 'red')
+
+    def logout(self):
+        self.current_user = None
 
     def print_main_menu(self) -> None:
         print('----------------------Main Menu----------------------')
@@ -47,8 +64,92 @@ class CLI:
         print('3. Register')
         print('0. Quit')
 
+    def print_user_manu(self) -> None:
+        print('----------------------User Menu----------------------')
+        print('1. Products')
+        print('2. Logout')
+        print('3. My Cart')
+        print('0. Quit')
+
+    def show_cart(self):
+        cart_items = self.cart_service.get_user_cart_items(self.current_user)
+
+        if cart_items:
+            for n, cart_item in enumerate(cart_items, start=1):
+                print(f"{n}. {cart_item['product']['name']} - {cart_item['quantity']}")
+        else:
+            print(colored('Sizning savatingiz bosh!', 'yellow'))
+
     def show_products(self) -> None:
         print('----------------------Product List----------------------')
+        products = self.product_service.get_products()
+        self.print_products(products)
+
+    def print_products(self, products):
+        if products:
+            for product in products:
+                print(f"{product['id']}. {product['name']}")
+
+            self.search_product()
+        else:
+            print(colored('Hozirda birorta ham mahsulot mavjud emas!', 'yellow'))
+
+    def search_product(self):
+        self.print_product_detail_menu()
+
+        choice = input(colored('> ', 'yellow'))
+        if choice == '1':
+            self.show_product_detail_by_id()
+        elif choice == '2':
+            self.search_products_by_name()
+        elif choice == '0':
+            return None
+        
+    def show_product_detail_by_id(self):
+        product_id = int(input('Product ID: '))
+
+        product = self.product_service.get_product_by_id(product_id)
+
+        if product:
+            self.print_product_detail(product)
+        else:
+            print(colored('Bunday ID ga ega product mavjud emas!', 'yellow'))
+
+    def print_product_detail(self, product):
+        print('Porudct haqida malumotlar')
+        print(f'Nomi: {product["name"]}')
+        print(f'Tavsif: {product["description"]}')
+        print(f'Narxi: {product["price"]}')
+        print(f'Chegirma foizi: {product["sale"]}')
+        print(f'Soni: {product["stock"]}')
+
+        print('Savatga qoshasizmi (ha)?')
+        choice = input(colored('> ', 'yellow'))
+
+        if choice == 'ha':
+            
+            if self.current_user:
+                self.cart_service.add_item(product, self.current_user)
+                print(colored('Mahsulot savatga qoshildi', 'green'))
+            else:
+                print(colored('Savat qoshish uchun login qilishingiz kerak!', 'yellow'))
+        else:
+            self.show_products()
+
+    def search_products_by_name(self):
+        search = input("Search: ")
+
+        products = self.product_service.get_product_by_name(search)
+        if products:
+            self.print_products(products)
+        else:
+            print(colored('Bunday ID ga ega product mavjud emas!', 'yellow'))
+
+    def print_product_detail_menu(self):
+        print('Productni qidirish uchun qaysi usulni tanlaysiz?')
+        print('1. Product IDsi boyicha')
+        print('2. Product name boyicha')
+        print('0. Bosh sahifaga qaytish')
 
     def login(self) -> None:
         while True:
@@ -125,4 +226,4 @@ class CLI:
 
     def quit(self) -> None:
         cprint('Hayr!', 'green')
-        sys.exit() 
+        sys.exit()
